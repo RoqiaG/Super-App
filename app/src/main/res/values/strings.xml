@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">My Application</string>
+    <string name="purpose">Purpose</string>
+    <string name="phone_number">Phone Number</string>
+    <string name="amount">Amount</string>
+    <string name="send_moneybtn">Sendmoney</string>
+    <string name="send_money">SendMoney</string>
+</resources>

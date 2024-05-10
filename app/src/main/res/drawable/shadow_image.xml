@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Background layer for shadow effect -->
+    <item android:left="15dp" android:top="10dp" android:right="15dp" android:bottom="15dp">
+        <shape>
+            <solid android:color="#f5f3f3" /> <!-- Shadow color (semi-transparent black) -->
+            <corners android:radius="25dp" /> <!-- Optional rounded corners -->
+        </shape>
+    </item>
+    <!-- Foreground layer for your Request to Pay card -->
+    <item>
+        <bitmap
+            android:src="@drawable/paymentcard1"
+        android:tileMode="disabled"
+        />
+    </item>
+
+</layer-list>

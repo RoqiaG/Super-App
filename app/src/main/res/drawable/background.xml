@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+<!-- Background image -->
+<item android:drawable="@drawable/backgroundalert" />
+<!-- Transparent layer -->
+<item>
+    <color android:color="#40000000"/> <!-- Set the alpha (transparency) value -->
+</item>
+</layer-list>
