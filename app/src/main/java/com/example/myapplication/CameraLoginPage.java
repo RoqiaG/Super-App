@@ -1,12 +1,19 @@
 package com.example.myapplication;
 
-import android.Manifest;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
+
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.TextureView;
@@ -14,12 +21,6 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-import androidx.core.content.FileProvider;
-
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -29,38 +30,77 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.Locale;
-import org.apache.commons.text.StringEscapeUtils;
 
-public class cameraPage extends AppCompatActivity {
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
+import okhttp3.ResponseBody;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
+
+public class CameraLoginPage extends AppCompatActivity {
+
     private static final String TAG = "cameraPage";
     private static final int REQUEST_IMAGE_CAPTURE = 1;
     private static final int CAMERA_PERMISSION_REQUEST_CODE = 2;
     private String currentPhotoPath;
 
+
+
     Button scanButton;
+
+    String url;
+    String national_id;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_camera_page);
+        setContentView(R.layout.activity_camera_login_page);
+
         TextureView textureView = findViewById(R.id.textureView);
         scanButton = findViewById(R.id.scanButton);
+
+        ApiService apiService = ApiClient2.getClient().create(ApiService.class);
+        Call<ResponseModel> call = apiService.getYourData();
+
+        call.enqueue(new Callback<ResponseModel>() {
+            @Override
+            public void onResponse(Call<ResponseModel> call, Response<ResponseModel> response) {
+                if (response.isSuccessful()) {
+                    ResponseModel data = response.body();
+                    url = data.getOcrUrl();
+                    Log.d(TAG, "onResponse:"+url);
+                    // Handle the response
+                    Log.d(TAG, "Data: " + data.toString());
+                } else {
+                    Log.e(TAG, "Request failed: " + response.code());
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ResponseModel> call, Throwable t) {
+                Log.e(TAG, "Network error: " + t.getMessage());
+            }
+        });
+
 
         scanButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (ContextCompat.checkSelfPermission(cameraPage.this, Manifest.permission.CAMERA)
-                        != PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(cameraPage.this,
-                        Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(cameraPage.this,
-                            new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                if (ContextCompat.checkSelfPermission(CameraLoginPage.this, android.Manifest.permission.CAMERA)
+                        != PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(CameraLoginPage.this,
+                        android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(CameraLoginPage.this,
+                            new String[]{android.Manifest.permission.CAMERA, android.Manifest.permission.WRITE_EXTERNAL_STORAGE},
                             CAMERA_PERMISSION_REQUEST_CODE);
                 } else {
                     dispatchTakePictureIntent();
@@ -68,6 +108,7 @@ public class cameraPage extends AppCompatActivity {
             }
         });
     }
+
 
     private void dispatchTakePictureIntent() {
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
@@ -136,7 +177,7 @@ public class cameraPage extends AppCompatActivity {
             String serverUrl = "https://super-app-backend.onrender.com/ocr/getOcrUrl"; // Replace with your server URL
             String link = "";
             try {
-                 link = readLinkFromAPI(serverUrl,"/flutter");
+                link = readLinkFromAPI(url,"/login_id");
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -245,27 +286,18 @@ public class cameraPage extends AppCompatActivity {
                     // Assuming the API response is a JSON containing the link under key "ocrUrl"
                     String jsonResponse = response.toString();
                     String link;
-//                    // Parse JSON to extract the link with the key "ocrUrl"
-//                    JSONObject jsonObject = new JSONObject(jsonResponse);
-//                    String ocrUrl = jsonObject.getString("ocrUrl");
-                    // Parse JSON to extract the link with the key "ocrUrl"
+
                     try {
                         JSONObject jsonObject = new JSONObject(jsonResponse);
                         String ocrUrl = jsonObject.getString("ocrUrl");
 
                         // Now you have the link, you can append "/flutter" to it
-                         link = ocrUrl.trim() + endpoint; // Trim to remove any leading or trailing whitespace
+                        link = ocrUrl.trim() + endpoint; // Trim to remove any leading or trailing whitespace
                         return link;
                     } catch (JSONException e) {
-                        e.printStackTrace(); // Or handle the exception as needed
-                        // Return null or some default value indicating failure to parse the JSON
+                        e.printStackTrace();
                         return null;
                     }
-
-
-                    // Now you have the link, you can append "/flutter" to it
-                     // Trim to remove any leading or trailing whitespace
-
 
                 } finally {
                     if (reader != null) {
@@ -274,8 +306,7 @@ public class cameraPage extends AppCompatActivity {
                 }
             }
             else {
-                // Handle error response
-                // For simplicity, let's just print the response code
+
                 System.out.println("Error response code: " + connection.getResponseCode());
                 return null;
             }
@@ -284,57 +315,64 @@ public class cameraPage extends AppCompatActivity {
         protected void onPostExecute(String[] result) {
             super.onPostExecute(result);
             handleApiResponse(result[0]);
-            Toast.makeText(cameraPage.this, "Response received", Toast.LENGTH_SHORT).show();
-//            Intent details = new Intent(cameraPage.this, View_details.class);
-//            details.putExtra("serverResponse", result[0]);
-//            startActivity(details);
+            Toast.makeText(CameraLoginPage.this, "Response received", Toast.LENGTH_SHORT).show();
         }
 
         private void handleApiResponse(String response) {
-            try {
-                // Ensure the response is correctly decoded as UTF-8
-                String encodedResponse = new String(response.getBytes(), "UTF-8");
+//            national_id = "01234567891011";
+            national_id = response;
 
-                // Retrieve the user_info from the Intent that started this activity
-                Intent receivedIntent = getIntent();
-                String user_info = receivedIntent.getStringExtra("concatenated_info");
+            // Display the response in a Toast for debugging purposes
+            Toast.makeText(CameraLoginPage.this, "Server Response: " + national_id, Toast.LENGTH_LONG).show();
 
-                // Unescape Unicode sequences to get the actual Arabic characters
-                String decodedResponse = StringEscapeUtils.unescapeJava(encodedResponse);
-                // Store the response in an array
-                // Split by multiple delimiters
-                String[] responseArray = decodedResponse.split("\"[,;\\\\s]+\"");
+            checkNI();
 
-                // Display the response array in a Toast
-                StringBuilder sb = new StringBuilder();
-                for (String line : responseArray) {
-                    if (line.contains("status") || line.contains("orc_data")) {
-                        // remove the the line from the array
-                    } else {
-                        sb.append(line).append("\n");
-                    }
-                }
-                String responseString = sb.toString();
-                Toast.makeText(cameraPage.this, responseString, Toast.LENGTH_LONG).show();
-                // Concatenate user_info and decodedResponse
-                String decodedResponse_info = null;
-                if (user_info != null) {
-                    decodedResponse_info = user_info + responseString;
-                }
-
-                // If needed, display the Arabic text in a Toast or any other UI component
-                // Toast.makeText(cameraPage.this, decodedResponse, Toast.LENGTH_LONG).show();
-
-                // Create a new Intent to send the data to View_details activity
-                Intent details = new Intent(cameraPage.this, View_details.class);
-                details.putExtra("serverResponse", responseArray);
-                details.putExtra("all_info", decodedResponse_info);
-                startActivity(details);
-            } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
-                Toast.makeText(cameraPage.this, "Error processing the response", Toast.LENGTH_SHORT).show();
-            }
         }
 
+
     }
+
+    public void checkNI() {
+        checkNILoginRequest niRequest = new checkNILoginRequest();
+        niRequest.setNational_id(national_id);
+
+        Call<checkNILoginResponse> NIresponse = ApiClient.getUserService().NIcheck(niRequest);
+
+        NIresponse.enqueue(new Callback<checkNILoginResponse>() {
+            @Override
+            public void onResponse(Call<checkNILoginResponse> call, Response<checkNILoginResponse> response) {
+
+                if (response.isSuccessful()){
+
+
+                    checkNILoginResponse checkNi = response.body();
+
+                    new Handler().postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+
+                            if (checkNi.isExists() == true) {
+                                Toast.makeText(CameraLoginPage.this,"login Successfully" , Toast.LENGTH_LONG).show();
+                                Intent home = new Intent(CameraLoginPage.this,Login.class);
+                                startActivity(home);
+                            }
+                            else {
+                                Toast.makeText(CameraLoginPage.this,"Failed",Toast.LENGTH_LONG).show();
+                            }
+
+                        }
+                    },100);
+
+                } else {
+                    Toast.makeText(CameraLoginPage.this,"login Failed" , Toast.LENGTH_LONG).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<checkNILoginResponse> call, Throwable t) {
+                Toast.makeText(CameraLoginPage.this,"Throwable" + t.getLocalizedMessage() , Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
 }
